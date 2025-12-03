@@ -176,8 +176,10 @@ class ConnectionPool:
 ## Open Questions
 
 1. Should we implement the full `_initiate_recycling()` workflow in this component or just detection + stub?
+  Just add a stub for now an dimplement in ENG-005.
 2. Do we need to add missing registry methods (`get_pending_count`, `connection_stats`) as part of this ticket or create separate ticket?
 3. Should force_subscribe() bypass the 50 minimum threshold or use same logic?
+  Use the same logic
 
 ## Related Tickets
 
