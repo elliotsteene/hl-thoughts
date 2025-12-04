@@ -177,8 +177,8 @@ async def test_get_by_status_returns_correct_assets(
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Linting passes: `just check`
-- [ ] Tests pass: `just test`
+- [x] Linting passes: `just check`
+- [x] Tests pass: `just test`
 
 #### Manual Verification:
 - [ ] Review expiration index fix addresses the KeyError scenario
@@ -262,8 +262,8 @@ __all__ = [
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Linting passes: `just check`
-- [ ] Tests pass: `just test`
+- [x] Linting passes: `just check`
+- [x] Tests pass: `just test`
 
 #### Manual Verification:
 - [ ] Package structure matches codebase conventions
