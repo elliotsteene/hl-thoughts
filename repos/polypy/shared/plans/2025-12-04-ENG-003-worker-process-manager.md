@@ -303,9 +303,9 @@ def __init__(
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] File `src/worker.py` exists and imports successfully: `uv run python -c "from src.worker import WorkerManager, WorkerStats"`
-- [ ] No linting errors: `just check`
-- [ ] All tests pass: `just test`
+- [x] File `src/worker.py` exists and imports successfully: `uv run python -c "from src.worker import WorkerManager, WorkerStats"`
+- [x] No linting errors: `just check`
+- [x] All tests pass: `just test`
 
 #### Manual Verification:
 - [ ] WorkerStats slot count is correct (should have 7 fields + property)
