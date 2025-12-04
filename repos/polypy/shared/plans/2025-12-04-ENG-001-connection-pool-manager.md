@@ -164,11 +164,11 @@ def mark_draining(self) -> None:
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] All unit tests pass: `uv run pytest tests/test_registry.py -v`
-- [ ] Type checking passes: `uv run ruff check .`
-- [ ] Linting passes: `uv run ruff format .`
-- [ ] New methods callable without errors
-- [ ] `connection_stats()` returns correct pollution ratio for test data
+- [x] All unit tests pass: `uv run pytest tests/test_registry.py -v`
+- [x] Type checking passes: `uv run ruff check .`
+- [x] Linting passes: `uv run ruff format .`
+- [x] New methods callable without errors
+- [x] `connection_stats()` returns correct pollution ratio for test data
 
 #### Manual Verification:
 - [ ] Registry methods return expected data types and values
