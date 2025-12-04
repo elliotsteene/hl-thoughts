@@ -36,7 +36,7 @@ A `MessageRouter` class in `src/router.py` that:
 - Unit tests for hashing, batching, stats
 - Integration tests with mock workers
 - `uv run pytest tests/test_router.py` passes
-- `uv run ruff check src/router.py` passes
+- `just check` passes
 
 ## What We're NOT Doing
 
@@ -135,10 +135,9 @@ def _hash_to_worker(asset_id: str, num_workers: int) -> int:
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] File created: `ls src/router.py`
-- [ ] Linting passes: `uv run ruff check src/router.py`
-- [ ] Type checking passes: `uv run pyright src/router.py` (if configured)
-- [ ] Import works: `uv run python -c "from src.router import RouterStats, _hash_to_worker; print('OK')"`
+- [x] File created: `ls src/router.py`
+- [x] Linting passes: `just check`
+- [x] Import works: `uv run python -c "from src.router import RouterStats, _hash_to_worker; print('OK')"`
 
 #### Manual Verification:
 - [ ] Review code matches spec lines 1810-1835
@@ -249,9 +248,9 @@ class MessageRouter:
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] Linting passes: `uv run ruff check src/router.py`
-- [ ] Import works: `uv run python -c "from src.router import MessageRouter; r = MessageRouter(4); print(r.num_workers)"`
-- [ ] Queues created: `uv run python -c "from src.router import MessageRouter; r = MessageRouter(4); print(len(r.get_worker_queues()))"`
+- [x] Linting passes: `just check`
+- [x] Import works: `uv run python -c "from src.router import MessageRouter; r = MessageRouter(4); print(r.num_workers)"`
+- [x] Queues created: `uv run python -c "from src.router import MessageRouter; r = MessageRouter(4); print(len(r.get_worker_queues()))"`
 
 #### Manual Verification:
 - [ ] __slots__ matches spec
@@ -307,8 +306,8 @@ Implement `route_message()` method that receives messages from connection callba
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] Linting passes: `uv run ruff check src/router.py`
-- [ ] Method signature matches MessageCallback type
+- [x] Linting passes: `just check`
+- [x] Method signature matches MessageCallback type
 
 #### Manual Verification:
 - [ ] Backpressure logs warning with asset_id
@@ -428,8 +427,8 @@ Implement the core routing loop with batching and worker distribution.
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] Linting passes: `uv run ruff check src/router.py`
-- [ ] No syntax errors: `uv run python -c "from src.router import MessageRouter"`
+- [x] Linting passes: `just check`
+- [x] No syntax errors: `uv run python -c "from src.router import MessageRouter"`
 
 #### Manual Verification:
 - [ ] Batch collection respects BATCH_SIZE limit
@@ -500,8 +499,8 @@ Implement start/stop methods for router lifecycle management.
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] Linting passes: `uv run ruff check src/router.py`
-- [ ] Full module imports: `uv run python -c "from src.router import MessageRouter, RouterStats, WorkerQueue"`
+- [x] Linting passes: `just check`
+- [x] Full module imports: `uv run python -c "from src.router import MessageRouter, RouterStats, WorkerQueue"`
 
 #### Manual Verification:
 - [ ] start() creates task with name "message-router"
@@ -756,8 +755,8 @@ class TestRoutingLoop:
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] Tests pass: `uv run pytest tests/test_router.py -v`
-- [ ] All tests green: `uv run pytest tests/test_router.py --tb=short`
+- [x] Tests pass: `uv run pytest tests/test_router.py -v`
+- [x] All tests green: `uv run pytest tests/test_router.py --tb=short`
 
 #### Manual Verification:
 - [ ] Test coverage appears reasonable
