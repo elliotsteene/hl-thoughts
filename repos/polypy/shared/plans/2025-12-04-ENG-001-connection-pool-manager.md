@@ -26,10 +26,6 @@ Implement the Connection Pool Manager (Component 5) to manage multiple WebSocket
 **Missing WebSocketConnection Method:**
 - `mark_draining()` - Set status to DRAINING for recycling workflow
 
-**Bugs to Fix:**
-- `asset_registry.py:191` - Checks `entry.condition_id != old_connection_id` instead of `entry.connection_id`
-- `asset_registry.py:195` - Updates `_by_condition` instead of `_by_connection`
-
 ## Desired End State
 
 **System Capabilities:**
@@ -153,30 +149,7 @@ def get_active_by_connection(self, connection_id: str) -> FrozenSet[str]:
     return frozenset(active)
 ```
 
-#### 4. Fix `reassign_connection()` Bug
-**File**: `src/registry/asset_registry.py`
-**Location**: Lines 191-196
-**Changes**: Fix condition check and index update
-
-```python
-# OLD (BUGGY):
-if entry is None or entry.condition_id != old_connection_id:
-    continue
-
-# Update connectionn index
-self._by_condition[old_connection_id].discard(asset_id)
-self._by_connection[new_connection_id].add(asset_id)
-
-# NEW (FIXED):
-if entry is None or entry.connection_id != old_connection_id:
-    continue
-
-# Update connection index
-self._by_connection[old_connection_id].discard(asset_id)
-self._by_connection[new_connection_id].add(asset_id)
-```
-
-#### 5. Add `mark_draining()` Method to WebSocketConnection
+#### 4. Add `mark_draining()` Method to WebSocketConnection
 **File**: `src/connection/websocket.py`
 **Location**: After `is_healthy` property (after line 92)
 **Changes**: Add method to set DRAINING status
