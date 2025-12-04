@@ -39,9 +39,6 @@ uv run pytest tests/test_worker.py -v
 
 # Integration tests pass
 uv run pytest tests/test_worker_integration.py -v
-
-# Manual verification
-uv run src/main.py  # Should spawn workers and process messages
 ```
 
 ## What We're NOT Doing
@@ -65,6 +62,23 @@ Incremental approach building from dataclasses → helper functions → worker p
 7. **Phase 7**: Integration testing with MessageRouter
 
 Each phase is independently testable and incrementally adds functionality.
+
+### Worker Count Guidelines
+
+**Choosing num_workers**:
+- Typically set to `cpu_count()` or `cpu_count() - 1` (leave one core for main process/OS)
+- Example: 8-core machine → use 7 or 8 workers
+- Check available cores: `python -c "import os; print(os.cpu_count())"`
+
+**Practical Limits**:
+- Hard limit: System CPU core count
+- Soft limit: Available memory (each worker can use 50-200MB depending on orderbook count)
+- Recommended max: 16 workers (diminishing returns beyond this due to queue contention)
+
+**Performance Considerations**:
+- More workers = better CPU parallelism but higher overhead
+- Fewer workers = lower overhead but potential bottleneck
+- Optimal: Match or slightly exceed core count for CPU-bound workloads
 
 ---
 
@@ -91,7 +105,7 @@ Each worker:
 """
 
 import logging
-import multiprocessing as mp
+import os
 import signal
 import time
 from dataclasses import dataclass
@@ -100,10 +114,9 @@ from multiprocessing import Process
 from multiprocessing import Queue as MPQueue
 from multiprocessing.synchronize import Event
 from queue import Empty, Full
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from src.messages.protocol import ParsedMessage
+from src.messages.protocol import EventType, ParsedMessage
+from src.orderbook.orderbook_store import Asset, OrderbookStore
 
 logger = logging.getLogger(__name__)
 
@@ -160,9 +173,20 @@ class WorkerManager:
 
         Args:
             num_workers: Number of worker processes to spawn
+
+        Raises:
+            ValueError: If num_workers < 1
         """
         if num_workers < 1:
             raise ValueError("num_workers must be at least 1")
+
+        # Warn if num_workers exceeds CPU count
+        cpu_count = os.cpu_count() or 1
+        if num_workers > cpu_count:
+            logger.warning(
+                f"num_workers ({num_workers}) exceeds CPU count ({cpu_count}). "
+                f"This may cause performance degradation due to context switching."
+            )
 
         self._num_workers = num_workers
         self._processes: list[Process] = []
@@ -214,7 +238,7 @@ class WorkerManager:
         raise NotImplementedError
 ```
 
-#### 2. Update MessageRouter to Accept Queues
+#### 2. Update MessageRouter to Require Queues
 
 **File**: `src/router.py:99-122`
 
@@ -237,32 +261,30 @@ def __init__(self, num_workers: int) -> None:
 def __init__(
     self,
     num_workers: int,
-    worker_queues: list[WorkerQueue] | None = None,
+    worker_queues: list[WorkerQueue],
 ) -> None:
     """
     Initialize router.
 
     Args:
         num_workers: Number of worker processes to route to
-        worker_queues: Optional pre-created queues (should match num_workers).
-                      If not provided, creates its own queues.
+        worker_queues: Pre-created queues from WorkerManager.
+                      Must have exactly one queue per worker.
+
+    Raises:
+        ValueError: If num_workers < 1 or queue count doesn't match num_workers
     """
     if num_workers < 1:
         raise ValueError("num_workers must be at least 1")
 
-    self._num_workers = num_workers
+    if len(worker_queues) != num_workers:
+        raise ValueError(
+            f"worker_queues length ({len(worker_queues)}) must match "
+            f"num_workers ({num_workers})"
+        )
 
-    if worker_queues is not None:
-        if len(worker_queues) != num_workers:
-            raise ValueError(
-                f"worker_queues length ({len(worker_queues)}) must match "
-                f"num_workers ({num_workers})"
-            )
-        self._worker_queues = worker_queues
-    else:
-        self._worker_queues = [
-            MPQueue(maxsize=WORKER_QUEUE_SIZE) for _ in range(num_workers)
-        ]
+    self._num_workers = num_workers
+    self._worker_queues = worker_queues
 
     self._async_queue: asyncio.Queue[tuple[str, ParsedMessage, float]] = (
         asyncio.Queue(maxsize=ASYNC_QUEUE_SIZE)
@@ -273,18 +295,17 @@ def __init__(
     self._asset_worker_cache: dict[str, int] = {}
 ```
 
+**Key Changes**:
+- `worker_queues` is now **required** (not optional)
+- Router never creates its own queues
+- Validation ensures exactly one queue per worker
+
 ### Success Criteria
 
 #### Automated Verification:
 - [ ] File `src/worker.py` exists and imports successfully: `uv run python -c "from src.worker import WorkerManager, WorkerStats"`
-- [ ] WorkerStats dataclass has all required fields: `uv run pytest tests/test_worker.py::test_worker_stats_structure -v`
-- [ ] WorkerStats.avg_processing_time_us property computes correctly: `uv run pytest tests/test_worker.py::test_worker_stats_properties -v`
-- [ ] WorkerManager initializes with valid num_workers: `uv run pytest tests/test_worker.py::test_worker_manager_init -v`
-- [ ] WorkerManager.get_input_queues() creates correct number of queues: `uv run pytest tests/test_worker.py::test_get_input_queues -v`
-- [ ] MessageRouter accepts worker_queues parameter: `uv run pytest tests/test_router.py::test_router_with_injected_queues -v`
-- [ ] MessageRouter validates queue count matches num_workers: `uv run pytest tests/test_router.py::test_router_queue_count_validation -v`
-- [ ] No linting errors: `uv run ruff check src/worker.py`
-- [ ] Type checking passes: `uv run mypy src/worker.py`
+- [ ] No linting errors: `just check`
+- [ ] All tests pass: `just test`
 
 #### Manual Verification:
 - [ ] WorkerStats slot count is correct (should have 7 fields + property)
@@ -307,8 +328,8 @@ Implement `_process_message()` helper function that handles BOOK, PRICE_CHANGE, 
 
 ```python
 def _process_message(
-    store: "OrderbookStore",
-    message: "ParsedMessage",
+    store: OrderbookStore,
+    message: ParsedMessage,
     stats: WorkerStats,
 ) -> None:
     """
@@ -319,50 +340,96 @@ def _process_message(
         message: Parsed message to process
         stats: Stats tracker to update
     """
-    from src.messages.protocol import EventType
-    from src.orderbook.orderbook_store import Asset
-
     stats.messages_processed += 1
 
-    if message.event_type == EventType.BOOK and message.book:
-        # Full orderbook snapshot
-        asset = Asset(asset_id=message.asset_id, market=message.market)
-        orderbook = store.register_asset(asset)
-        orderbook.apply_snapshot(message.book, message.raw_timestamp)
+    try:
+        match message.event_type:
+            case EventType.BOOK:
+                _process_book_snapshot(store, message, stats)
 
-        stats.snapshots_received += 1
+            case EventType.PRICE_CHANGE:
+                _process_price_change(store, message, stats)
+
+            case EventType.LAST_TRADE_PRICE:
+                _process_last_trade(store, message, stats)
+
+            case _:
+                logger.warning(f"Unknown event type: {message.event_type}")
+
+    except AssertionError as e:
+        logger.error(
+            f"Assertion failed processing {message.event_type}: {e}",
+            exc_info=True,
+        )
+    except Exception as e:
+        logger.exception(
+            f"Error processing {message.event_type} for asset {message.asset_id}: {e}"
+        )
+
+
+def _process_book_snapshot(
+    store: OrderbookStore,
+    message: ParsedMessage,
+    stats: WorkerStats,
+) -> None:
+    """Process BOOK snapshot message."""
+    assert message.book is not None, "BOOK message missing book field"
+
+    asset = Asset(asset_id=message.asset_id, market=message.market)
+    orderbook = store.register_asset(asset)
+    orderbook.apply_snapshot(message.book, message.raw_timestamp)
+
+    stats.snapshots_received += 1
+    stats.updates_applied += 1
+
+
+def _process_price_change(
+    store: OrderbookStore,
+    message: ParsedMessage,
+    stats: WorkerStats,
+) -> None:
+    """Process PRICE_CHANGE message."""
+    assert message.price_change is not None, "PRICE_CHANGE message missing price_change field"
+
+    orderbook = store.get_state(message.asset_id)
+    if orderbook:
+        orderbook.apply_price_change(message.price_change, message.raw_timestamp)
         stats.updates_applied += 1
+    else:
+        logger.debug(
+            f"Skipping price_change for unknown asset {message.asset_id}"
+        )
 
-    elif message.event_type == EventType.PRICE_CHANGE and message.price_change:
-        # Single price level update
-        orderbook = store.get_state(message.asset_id)
-        if orderbook:
-            orderbook.apply_price_change(message.price_change, message.raw_timestamp)
-            stats.updates_applied += 1
 
-    elif message.event_type == EventType.LAST_TRADE_PRICE and message.last_trade:
-        # Trade event (no state update, just logged for stats)
-        # In future, custom handlers would receive callback here
-        pass
+def _process_last_trade(
+    store: OrderbookStore,
+    message: ParsedMessage,
+    stats: WorkerStats,
+) -> None:
+    """Process LAST_TRADE_PRICE message."""
+    assert message.last_trade is not None, "LAST_TRADE_PRICE message missing last_trade field"
+
+    # No state update for trades in v1 (handler_factory deferred)
+    # In future, custom handlers would receive callback here
+    pass
 ```
 
 **Key Design Notes**:
+- Uses structural pattern matching (`match`/`case`) for clean event type dispatch
+- Separate handler functions for each event type improve testability
+- Assertions validate message structure; caught and logged on failure
 - Uses `message.asset_id` and `message.market` from top-level ParsedMessage (not nested in book)
 - Calls `apply_snapshot(snapshot, timestamp)` with both parameters
 - Processes single PriceChange directly (no iteration over `changes` list)
 - Skips LAST_TRADE_PRICE updates (no handler_factory in v1)
 - Only updates stats.updates_applied when state actually changes
+- All imports at module level (no function-level imports)
 
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] BOOK snapshot messages processed correctly: `uv run pytest tests/test_worker.py::test_process_message_book -v`
-- [ ] PRICE_CHANGE messages processed correctly: `uv run pytest tests/test_worker.py::test_process_message_price_change -v`
-- [ ] LAST_TRADE_PRICE messages handled (no-op): `uv run pytest tests/test_worker.py::test_process_message_trade -v`
-- [ ] Stats counters increment correctly: `uv run pytest tests/test_worker.py::test_process_message_stats -v`
-- [ ] Missing orderbook for price_change doesn't crash: `uv run pytest tests/test_worker.py::test_process_message_missing_orderbook -v`
-- [ ] Function is importable: `uv run python -c "from src.worker import _process_message"`
-- [ ] No linting errors: `uv run ruff check src/worker.py`
+- [ ] No linting errors: `just check`
+- [ ] All tests pass: `just test`
 
 #### Manual Verification:
 - [ ] Message processing logic matches actual OrderbookState API signatures
@@ -401,8 +468,6 @@ def _worker_process(
         stats_queue: Queue to send periodic stats updates
         shutdown_event: Multiprocessing event for shutdown coordination
     """
-    from src.orderbook.orderbook_store import OrderbookStore
-
     # Ignore SIGINT - parent process handles graceful shutdown
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
@@ -465,13 +530,8 @@ def _worker_process(
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] Worker process can be spawned: `uv run pytest tests/test_worker.py::test_spawn_worker_process -v`
-- [ ] Worker processes messages from queue: `uv run pytest tests/test_worker.py::test_worker_processes_messages -v`
-- [ ] Worker stops on None sentinel: `uv run pytest tests/test_worker.py::test_worker_shutdown_sentinel -v`
-- [ ] Worker stops on shutdown_event: `uv run pytest tests/test_worker.py::test_worker_shutdown_event -v`
-- [ ] Worker ignores SIGINT: `uv run pytest tests/test_worker.py::test_worker_ignores_sigint -v`
-- [ ] Worker handles processing errors gracefully: `uv run pytest tests/test_worker.py::test_worker_error_handling -v`
-- [ ] No linting errors: `uv run ruff check src/worker.py`
+- [ ] No linting errors: `just check`
+- [ ] All tests pass: `just test`
 
 #### Manual Verification:
 - [ ] Worker process logs appear correctly in output
@@ -512,8 +572,6 @@ def _worker_process(
         stats_queue: Queue to send periodic stats updates
         shutdown_event: Multiprocessing event for shutdown coordination
     """
-    from src.orderbook.orderbook_store import OrderbookStore
-
     # Ignore SIGINT - parent process handles graceful shutdown
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
@@ -605,13 +663,8 @@ def _worker_process(
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] Heartbeat updates stats periodically: `uv run pytest tests/test_worker.py::test_worker_heartbeat -v`
-- [ ] Stats reports sent to queue: `uv run pytest tests/test_worker.py::test_worker_stats_reporting -v`
-- [ ] Full stats queue doesn't block worker: `uv run pytest tests/test_worker.py::test_worker_stats_queue_full -v`
-- [ ] Heartbeat interval approximately correct: `uv run pytest tests/test_worker.py::test_heartbeat_timing -v`
-- [ ] Stats interval approximately correct: `uv run pytest tests/test_worker.py::test_stats_timing -v`
-- [ ] Final stats sent on shutdown: `uv run pytest tests/test_worker.py::test_worker_final_stats -v`
-- [ ] No linting errors: `uv run ruff check src/worker.py`
+- [ ] No linting errors: `just check`
+- [ ] All tests pass: `just test`
 
 #### Manual Verification:
 - [ ] Stats appear in queue at expected intervals
@@ -730,14 +783,8 @@ def stop(self, timeout: float = 10.0) -> None:
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] WorkerManager starts processes: `uv run pytest tests/test_worker.py::test_worker_manager_start -v`
-- [ ] WorkerManager stops processes gracefully: `uv run pytest tests/test_worker.py::test_worker_manager_stop -v`
-- [ ] Shutdown completes within timeout: `uv run pytest tests/test_worker.py::test_worker_manager_stop_timeout -v`
-- [ ] Force terminate works for hung worker: `uv run pytest tests/test_worker.py::test_worker_manager_force_terminate -v`
-- [ ] Multiple start() calls are idempotent: `uv run pytest tests/test_worker.py::test_worker_manager_start_idempotent -v`
-- [ ] Multiple stop() calls are idempotent: `uv run pytest tests/test_worker.py::test_worker_manager_stop_idempotent -v`
-- [ ] All processes cleaned up: `uv run pytest tests/test_worker.py::test_worker_manager_cleanup -v`
-- [ ] No linting errors: `uv run ruff check src/worker.py`
+- [ ] No linting errors: `just check`
+- [ ] All tests pass: `just test`
 
 #### Manual Verification:
 - [ ] Worker processes visible in system process list while running
@@ -820,14 +867,8 @@ def get_alive_count(self) -> int:
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] get_stats() returns empty dict initially: `uv run pytest tests/test_worker.py::test_get_stats_empty -v`
-- [ ] get_stats() collects stats from workers: `uv run pytest tests/test_worker.py::test_get_stats_collection -v`
-- [ ] get_stats() is non-blocking: `uv run pytest tests/test_worker.py::test_get_stats_nonblocking -v`
-- [ ] is_healthy() returns True when all alive: `uv run pytest tests/test_worker.py::test_is_healthy_all_alive -v`
-- [ ] is_healthy() returns False when worker dead: `uv run pytest tests/test_worker.py::test_is_healthy_worker_dead -v`
-- [ ] get_alive_count() counts correctly: `uv run pytest tests/test_worker.py::test_get_alive_count -v`
-- [ ] get_alive_count() updates when worker dies: `uv run pytest tests/test_worker.py::test_get_alive_count_worker_dies -v`
-- [ ] No linting errors: `uv run ruff check src/worker.py`
+- [ ] No linting errors: `just check`
+- [ ] All tests pass: `just test`
 
 #### Manual Verification:
 - [ ] Stats appear after STATS_INTERVAL (30 seconds)
@@ -1004,14 +1045,8 @@ worker_manager.stop()
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] Integration tests pass: `uv run pytest tests/test_worker_integration.py -v`
-- [ ] Messages routed to correct workers via hash: `uv run pytest tests/test_worker_integration.py::test_integration_router_to_worker -v`
-- [ ] Multiple workers process messages concurrently: `uv run pytest tests/test_worker_integration.py::test_integration_multiple_workers -v`
-- [ ] Crash detection works: `uv run pytest tests/test_worker_integration.py::test_integration_worker_crash_detection -v`
-- [ ] All unit tests still pass: `uv run pytest tests/test_worker.py -v`
-- [ ] All router tests still pass: `uv run pytest tests/test_router.py -v`
-- [ ] No linting errors: `uv run ruff check .`
-- [ ] Type checking passes: `uv run mypy src/`
+- [ ] No linting errors: `just check`
+- [ ] All tests pass: `just test`
 
 #### Manual Verification:
 - [ ] Run application with workers: `uv run src/main.py` (should spawn workers and process messages)
@@ -1163,9 +1198,15 @@ worker_manager.start()
 await router.start()
 ```
 
-### Backwards Compatibility
+### Breaking Change
 
-MessageRouter remains backwards compatible - if no `worker_queues` provided, it creates its own (existing behavior). However, WorkerManager should be used for production deployments.
+**Important**: MessageRouter now **requires** `worker_queues` parameter. This is a breaking change:
+
+- Old code: `MessageRouter(num_workers=4)` will **fail**
+- New code: Must create WorkerManager first and pass its queues to router
+- Reason: WorkerManager owns multiprocessing resources and their lifecycle
+
+**Migration is required** for any existing code using MessageRouter.
 
 ---
 
