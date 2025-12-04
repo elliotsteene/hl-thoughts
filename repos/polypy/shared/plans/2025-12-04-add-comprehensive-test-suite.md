@@ -21,8 +21,8 @@ Add comprehensive pytest-based unit tests for all core components in the polypy 
 - WebsocketConnection with network I/O mocking
 
 **Dependencies Available:**
-- `pytest-asyncio>=1.3.0` already in dev dependencies (pyproject.toml:20)
-- Need to add `pytest` explicitly (currently implicit)
+- `pytest-asyncio>=1.3.0` already in dev dependencies (pyproject.toml:21)
+- `"pytest>=9.0.1"` already in dev dependencies (pyproject.toml:20)
 
 ## Desired End State
 
@@ -61,22 +61,8 @@ Set up pytest configuration and shared fixtures to support all subsequent test p
 
 ### Changes Required:
 
-#### 1. Add pytest to dependencies
-**File**: `pyproject.toml`
-**Changes**: Add pytest to dev dependencies
 
-```toml
-[dependency-groups]
-dev = [
-    "pytest>=8.0.0",
-    "pyrefly>=0.42.3",
-    "pytest-asyncio>=1.3.0",
-    "rich>=14.2.0",
-    "ruff>=0.14.6",
-]
-```
-
-#### 2. Create pytest configuration
+#### 1. Create pytest configuration
 **File**: `pyproject.toml`
 **Changes**: Add pytest configuration section at the end
 
@@ -168,9 +154,9 @@ def sample_price_change(sample_asset_id: str) -> PriceChange:
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Dependencies install successfully: `uv sync`
-- [ ] Pytest discovers test directory: `uv run pytest --collect-only`
-- [ ] Fixtures are available: `uv run pytest tests/test_parser.py -v`
+- [x] Dependencies install successfully: `uv sync`
+- [x] Pytest discovers test directory: `uv run pytest --collect-only`
+- [x] Fixtures are available: `uv run pytest tests/test_parser.py -v`
 
 #### Manual Verification:
 - [ ] No pytest configuration warnings appear
@@ -408,9 +394,9 @@ class TestParserEdgeCases:
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Protocol tests pass: `uv run pytest tests/test_protocol.py -v`
-- [ ] Expanded parser tests pass: `uv run pytest tests/test_parser.py -v`
-- [ ] All edge cases handled: `uv run pytest tests/test_parser.py::TestParserEdgeCases -v`
+- [x] Protocol tests pass: `uv run pytest tests/test_protocol.py -v`
+- [x] Expanded parser tests pass: `uv run pytest tests/test_parser.py -v`
+- [x] All edge cases handled: `uv run pytest tests/test_parser.py::TestParserEdgeCases -v`
 
 #### Manual Verification:
 - [ ] Test output is clear and descriptive
@@ -741,9 +727,9 @@ class TestOrderbookStore:
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] OrderbookState tests pass: `uv run pytest tests/test_orderbook.py::TestOrderbookState -v`
-- [ ] OrderbookStore tests pass: `uv run pytest tests/test_orderbook.py::TestOrderbookStore -v`
-- [ ] All orderbook tests pass: `uv run pytest tests/test_orderbook.py -v`
+- [x] OrderbookState tests pass: `uv run pytest tests/test_orderbook.py::TestOrderbookState -v`
+- [x] OrderbookStore tests pass: `uv run pytest tests/test_orderbook.py::TestOrderbookStore -v`
+- [x] All orderbook tests pass: `uv run pytest tests/test_orderbook.py -v`
 
 #### Manual Verification:
 - [ ] Test descriptions clearly indicate what's being tested
@@ -983,9 +969,9 @@ class TestAssetRegistry:
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] AssetEntry tests pass: `uv run pytest tests/test_registry.py::TestAssetEntry -v`
-- [ ] AssetRegistry async tests pass: `uv run pytest tests/test_registry.py::TestAssetRegistry -v`
-- [ ] All registry tests pass: `uv run pytest tests/test_registry.py -v`
+- [x] AssetEntry tests pass: `uv run pytest tests/test_registry.py::TestAssetEntry -v`
+- [x] AssetRegistry async tests pass: `uv run pytest tests/test_registry.py::TestAssetRegistry -v`
+- [x] All registry tests pass: `uv run pytest tests/test_registry.py -v`
 
 #### Manual Verification:
 - [ ] Async operations complete without warnings
@@ -1154,11 +1140,11 @@ class TestWebsocketConnection:
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] ConnectionStats tests pass: `uv run pytest tests/test_connection.py::TestConnectionStats -v`
-- [ ] WebSocket mocking tests pass: `uv run pytest tests/test_connection.py::TestWebsocketConnection -v`
-- [ ] All connection tests pass: `uv run pytest tests/test_connection.py -v`
-- [ ] Full test suite passes: `uv run pytest -v`
-- [ ] Tests run quickly (no actual network I/O): `uv run pytest --durations=10`
+- [x] ConnectionStats tests pass: `uv run pytest tests/test_connection.py::TestConnectionStats -v`
+- [x] WebSocket mocking tests pass: `uv run pytest tests/test_connection.py::TestWebsocketConnection -v`
+- [x] All connection tests pass: `uv run pytest tests/test_connection.py -v`
+- [x] Full test suite passes: `uv run pytest -v`
+- [x] Tests run quickly (no actual network I/O): `uv run pytest --durations=10`
 
 #### Manual Verification:
 - [ ] Mock assertions are clear and verify behavior
