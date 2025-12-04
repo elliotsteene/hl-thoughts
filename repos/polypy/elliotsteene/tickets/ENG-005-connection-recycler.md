@@ -130,7 +130,7 @@ MAX_CONCURRENT_RECYCLES = 2       # Limit concurrent operations
 ## Implementation Plan
 
 ### Phase 1: Core Structure (1 day)
-1. Create `src/recycler.py`
+1. Create `src/lifecycle/recycler.py`
 2. Define RecycleStats dataclass
 3. Implement ConnectionRecycler.__init__()
 4. Add _active_recycles set
