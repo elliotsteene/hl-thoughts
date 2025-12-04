@@ -428,8 +428,8 @@ def _process_last_trade(
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] No linting errors: `just check`
-- [ ] All tests pass: `just test`
+- [x] No linting errors: `just check`
+- [x] All tests pass: `just test`
 
 #### Manual Verification:
 - [ ] Message processing logic matches actual OrderbookState API signatures
@@ -530,8 +530,8 @@ def _worker_process(
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] No linting errors: `just check`
-- [ ] All tests pass: `just test`
+- [x] No linting errors: `just check`
+- [x] All tests pass: `just test`
 
 #### Manual Verification:
 - [ ] Worker process logs appear correctly in output
@@ -663,8 +663,8 @@ def _worker_process(
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] No linting errors: `just check`
-- [ ] All tests pass: `just test`
+- [x] No linting errors: `just check`
+- [x] All tests pass: `just test`
 
 #### Manual Verification:
 - [ ] Stats appear in queue at expected intervals
@@ -783,8 +783,8 @@ def stop(self, timeout: float = 10.0) -> None:
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] No linting errors: `just check`
-- [ ] All tests pass: `just test`
+- [x] No linting errors: `just check`
+- [x] All tests pass: `just test`
 
 #### Manual Verification:
 - [ ] Worker processes visible in system process list while running
@@ -867,8 +867,8 @@ def get_alive_count(self) -> int:
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] No linting errors: `just check`
-- [ ] All tests pass: `just test`
+- [x] No linting errors: `just check`
+- [x] All tests pass: `just test`
 
 #### Manual Verification:
 - [ ] Stats appear after STATS_INTERVAL (30 seconds)
@@ -1045,8 +1045,8 @@ worker_manager.stop()
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] No linting errors: `just check`
-- [ ] All tests pass: `just test`
+- [x] No linting errors: `just check`
+- [x] All tests pass: `just test`
 
 #### Manual Verification:
 - [ ] Run application with workers: `uv run src/main.py` (should spawn workers and process messages)
