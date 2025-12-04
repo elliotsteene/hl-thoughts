@@ -275,7 +275,7 @@ Use aiohttp.ClientSession:
 
 ## API Considerations
 
-- Gamma API is undocumented - behavior may change
+- Gamma API documentation can be found here - <https://docs.polymarket.com/developers/gamma-markets-api/fetch-markets-guide#3-fetch-all-active-markets>
 - May need to handle new market types in future
 - Rate limits unknown - be conservative
 - Consider caching API responses if discovery becomes expensive
