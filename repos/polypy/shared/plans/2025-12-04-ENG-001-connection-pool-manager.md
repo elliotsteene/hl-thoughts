@@ -359,16 +359,16 @@ class ConnectionPool:
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Module imports successfully: `python -c "from src.pool import ConnectionPool"`
-- [ ] Type checking passes: `uv run ruff check .`
-- [ ] Can instantiate ConnectionPool with registry and callback
-- [ ] `start()` and `stop()` complete without errors
-- [ ] Properties return correct default values (0 connections initially)
+- [x] Module imports successfully: `python -c "from src.pool import ConnectionPool"`
+- [x] Type checking passes: `uv run ruff check .`
+- [x] Can instantiate ConnectionPool with registry and callback
+- [x] `start()` and `stop()` complete without errors
+- [x] Properties return correct default values (0 connections initially)
 
 #### Manual Verification:
-- [ ] ConnectionInfo dataclass correctly tracks age
-- [ ] Pool initializes with all required dependencies
-- [ ] Graceful shutdown completes within expected time
+- [x] ConnectionInfo dataclass correctly tracks age
+- [x] Pool initializes with all required dependencies
+- [x] Graceful shutdown completes within expected time
 
 **Implementation Note**: After completing this phase and all automated verification passes, pause here for manual confirmation from the human that the manual testing was successful before proceeding to the next phase.
 
@@ -454,11 +454,11 @@ Implement the periodic subscription loop that checks for pending markets and cre
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Unit tests pass: `uv run pytest tests/test_pool.py::test_subscription_loop -v`
-- [ ] Mock registry returns pending markets correctly
-- [ ] Subscription loop creates connections when pending >= 50
-- [ ] Subscription loop skips creation when pending < 50
-- [ ] Type checking passes: `uv run ruff check .`
+- [x] Unit tests pass: `uv run pytest tests/test_pool.py::test_subscription_loop -v`
+- [x] Mock registry returns pending markets correctly
+- [x] Subscription loop creates connections when pending >= 50
+- [x] Subscription loop skips creation when pending < 50
+- [x] Type checking passes: `uv run ruff check .`
 
 #### Manual Verification:
 - [ ] Add 100 pending assets to registry, verify connection created after 30s interval
@@ -593,11 +593,11 @@ Implement connection monitoring for recycling triggers (pollution ratio, age) an
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Unit tests pass: `uv run pytest tests/test_pool.py::test_recycling_detection -v`
-- [ ] Recycling triggered when pollution >= 30%
-- [ ] Recycling skipped when age < 5 minutes
-- [ ] Recycling skipped for draining connections
-- [ ] Type checking passes: `uv run ruff check .`
+- [x] Unit tests pass: `uv run pytest tests/test_pool.py::test_recycling_detection -v`
+- [x] Recycling triggered when pollution >= 30%
+- [x] Recycling skipped when age < 5 minutes
+- [x] Recycling skipped for draining connections
+- [x] Type checking passes: `uv run ruff check .`
 
 #### Manual Verification:
 - [ ] Create connection with 70% expired assets (age > 5 min), verify recycling triggered
