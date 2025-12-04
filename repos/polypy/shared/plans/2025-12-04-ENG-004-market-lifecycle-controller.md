@@ -547,8 +547,8 @@ class TestFetchActiveMarkets:
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Linting passes: `just check`
-- [ ] Tests pass: `just test`
+- [x] Linting passes: `just check`
+- [x] Tests pass: `just test`
 
 #### Manual Verification:
 - [ ] Test API call manually with curl: `curl "https://gamma-api.polymarket.com/markets?limit=5&active=true&closed=false"`
@@ -933,8 +933,8 @@ __all__ = [
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Linting passes: `just check`
-- [ ] Tests pass: `just test`
+- [x] Linting passes: `just check`
+- [x] Tests pass: `just test`
 
 #### Manual Verification:
 - [ ] Review controller structure follows codebase patterns (compare with ConnectionPool)
