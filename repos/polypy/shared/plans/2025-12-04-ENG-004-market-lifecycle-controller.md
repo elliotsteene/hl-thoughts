@@ -1591,8 +1591,8 @@ Run: `mkdir -p scripts`
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Script runs without errors: `uv run python scripts/test_gamma_api.py`
-- [ ] Markets are fetched and parsed correctly
+- [x] Script runs without errors: `uv run python scripts/test_gamma_api.py`
+- [x] Markets are fetched and parsed correctly
 
 #### Manual Verification:
 - [ ] Output shows real market data from Polymarket
