@@ -24,8 +24,6 @@ if expiration_ts not in self._by_expiration:
 ```
 Should be `setdefault` pattern or fix the conditional.
 
-### HTTP Client
-No existing HTTP client code. Need to add `aiohttp` dependency and implement HTTP client for Gamma API.
 
 ### Background Task Patterns
 Strong patterns exist in `ConnectionPool` (`src/connection/pool.py:116-152`) and `WebsocketConnection` for:
@@ -179,10 +177,8 @@ async def test_get_by_status_returns_correct_assets(
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] All existing registry tests pass: `uv run pytest tests/test_registry.py -v`
-- [ ] New method tests pass: `uv run pytest tests/test_registry.py -v -k "expiring_before or get_by_status"`
-- [ ] Linting passes: `uv run ruff check src/registry/`
-- [ ] Type checking passes: `uv run pyrefly check src/registry/`
+- [ ] Linting passes: `just check`
+- [ ] Tests pass: `just test`
 
 #### Manual Verification:
 - [ ] Review expiration index fix addresses the KeyError scenario
@@ -203,20 +199,7 @@ Create the `src/lifecycle/` package with type definitions for market info and li
 - `src/lifecycle/__init__.py`
 - `src/lifecycle/types.py`
 
-#### 2. Add `aiohttp` dependency
-**File**: `pyproject.toml`
-
-Add to dependencies:
-```toml
-dependencies = [
-    "aiohttp>=3.11.0",
-    # ... existing deps
-]
-```
-
-Run: `uv sync`
-
-#### 3. Define types
+#### 2. Define types
 **File**: `src/lifecycle/types.py`
 
 ```python
@@ -279,10 +262,8 @@ __all__ = [
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Dependencies sync: `uv sync`
-- [ ] Import works: `python -c "from src.lifecycle import MarketInfo, LifecycleCallback"`
-- [ ] Linting passes: `uv run ruff check src/lifecycle/`
-- [ ] Type checking passes: `uv run pyrefly check src/lifecycle/`
+- [ ] Linting passes: `just check`
+- [ ] Tests pass: `just test`
 
 #### Manual Verification:
 - [ ] Package structure matches codebase conventions
@@ -566,9 +547,8 @@ class TestFetchActiveMarkets:
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] API module imports: `python -c "from src.lifecycle.api import fetch_active_markets"`
-- [ ] Unit tests pass: `uv run pytest tests/test_lifecycle_api.py -v`
-- [ ] Linting passes: `uv run ruff check src/lifecycle/api.py`
+- [ ] Linting passes: `just check`
+- [ ] Tests pass: `just test`
 
 #### Manual Verification:
 - [ ] Test API call manually with curl: `curl "https://gamma-api.polymarket.com/markets?limit=5&active=true&closed=false"`
@@ -953,9 +933,8 @@ __all__ = [
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Controller imports: `python -c "from src.lifecycle import LifecycleController"`
-- [ ] Linting passes: `uv run ruff check src/lifecycle/`
-- [ ] Type checking passes: `uv run pyrefly check src/lifecycle/`
+- [ ] Linting passes: `just check`
+- [ ] Tests pass: `just test`
 
 #### Manual Verification:
 - [ ] Review controller structure follows codebase patterns (compare with ConnectionPool)
@@ -1308,9 +1287,8 @@ class TestDiscoveryLoop:
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] All controller tests pass: `uv run pytest tests/test_lifecycle_controller.py -v`
-- [ ] Coverage is adequate: `uv run pytest tests/test_lifecycle_controller.py --cov=src/lifecycle`
-- [ ] Linting passes: `uv run ruff check tests/test_lifecycle_controller.py`
+- [ ] Linting passes: `just check`
+- [ ] Tests pass: `just test`
 
 #### Manual Verification:
 - [ ] Test structure follows existing test patterns in codebase
@@ -1529,9 +1507,8 @@ class TestLifecycleIntegration:
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] All integration tests pass: `uv run pytest tests/test_lifecycle_integration.py -v`
-- [ ] All lifecycle tests pass: `uv run pytest tests/ -k lifecycle -v`
-- [ ] Full test suite passes: `uv run pytest`
+- [ ] Linting passes: `just check`
+- [ ] Tests pass: `just test`
 
 #### Manual Verification:
 - [ ] Review test coverage for edge cases
