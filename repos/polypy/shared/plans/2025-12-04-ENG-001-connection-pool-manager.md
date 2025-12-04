@@ -694,13 +694,12 @@ Implement stats aggregation, capacity calculation, and force subscription for pr
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Unit tests pass: `uv run pytest tests/test_pool.py::test_stats -v`
-- [ ] Unit tests pass: `uv run pytest tests/test_pool.py::test_force_subscribe -v`
-- [ ] `get_connection_stats()` returns list of dicts with correct keys
-- [ ] `force_subscribe()` raises ValueError for >500 assets
-- [ ] `force_subscribe()` raises ValueError for empty list
-- [ ] `force_subscribe()` returns connection_id string
-- [ ] Type checking passes: `uv run ruff check .`
+- [x] Unit tests pass: `uv run pytest tests/test_pool.py::TestStatsAndForceSubscribe -v`
+- [x] `get_connection_stats()` returns list of dicts with correct keys
+- [x] `force_subscribe()` raises ValueError for >500 assets
+- [x] `force_subscribe()` raises ValueError for empty list
+- [x] `force_subscribe()` returns connection_id string
+- [x] Type checking passes: `uv run ruff check .`
 
 #### Manual Verification:
 - [ ] Create multiple connections, verify stats show accurate data
@@ -865,13 +864,13 @@ async def test_graceful_shutdown():
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] All integration tests pass: `uv run pytest tests/test_pool_integration.py -v`
-- [ ] Pool creates multiple connections for 1000+ markets
-- [ ] Capacity tracking accurate across connections
-- [ ] Graceful shutdown completes within 10s
-- [ ] No resource leaks (all connections closed)
-- [ ] Type checking passes: `uv run ruff check .`
-- [ ] Linting passes: `uv run ruff format .`
+- [x] All integration tests pass: `uv run pytest tests/test_pool_integration.py -v`
+- [x] Pool creates multiple connections for 1000+ markets
+- [x] Capacity tracking accurate across connections
+- [x] Graceful shutdown completes within 10s
+- [x] No resource leaks (all connections closed)
+- [x] Type checking passes: `uv run ruff check .`
+- [x] Linting passes: `uv run ruff format .`
 
 #### Manual Verification:
 - [ ] Run integration test and observe log output
