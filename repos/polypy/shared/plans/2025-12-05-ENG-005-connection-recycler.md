@@ -1354,14 +1354,14 @@ class TestManualOperations:
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] Unit tests pass: `just test`
-- [ ] Formatting correct: `just check`
+- [x] Unit tests pass: `just test`
+- [x] Formatting correct: `just check`
 
 #### Manual Verification:
-- [ ] force_recycle() successfully triggers recycling on demand
-- [ ] ValueError raised when trying to recycle connection already in progress
-- [ ] Logging provides clear visibility into recycler operations
-- [ ] get_active_recycles() shows current state correctly
+- [x] force_recycle() successfully triggers recycling on demand
+- [x] ValueError raised when trying to recycle connection already in progress
+- [x] Logging provides clear visibility into recycler operations
+- [x] get_active_recycles() shows current state correctly
 
 **Implementation Note**: After completing this phase and all automated verification passes, pause here for manual confirmation before proceeding to Phase 6.
 
