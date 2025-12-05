@@ -61,10 +61,8 @@ A production-ready `ConnectionRecycler` class that:
 ### Verification
 
 **Automated:**
-- All unit tests pass: `uv run pytest tests/test_recycler.py`
-- Integration tests pass: `uv run pytest tests/test_recycler_integration.py`
-- Type checking passes: `uv run ruff check src/lifecycle/recycler.py`
-- No linting errors: `uv run ruff format src/lifecycle/recycler.py`
+- All unit tests pass: `just test`
+- No linting errors: `just check`
 
 **Manual:**
 - Recycling triggers correctly on pollution threshold
@@ -340,10 +338,8 @@ def mock_pool():
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] Unit tests pass: `uv run pytest tests/test_recycler.py -v`
-- [ ] Type checking passes: `uv run ruff check src/lifecycle/recycler.py`
-- [ ] Formatting correct: `uv run ruff format src/lifecycle/recycler.py`
-- [ ] Import works: `python -c "from src.lifecycle.recycler import ConnectionRecycler, RecycleStats"`
+- [ ] Unit tests pass: `just test`
+- [ ] Formatting correct: `just check`
 
 #### Manual Verification:
 - [ ] RecycleStats dataclass has correct default values
@@ -575,10 +571,8 @@ def recycler(mock_registry, mock_pool):
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] Unit tests pass: `uv run pytest tests/test_recycler.py::TestTriggerDetection -v`
-- [ ] All previous tests still pass: `uv run pytest tests/test_recycler.py -v`
-- [ ] Type checking passes: `uv run ruff check src/lifecycle/recycler.py`
-- [ ] No linting errors: `uv run ruff format src/lifecycle/recycler.py`
+- [ ] Unit tests pass: `just test`
+- [ ] Formatting correct: `just check`
 
 #### Manual Verification:
 - [ ] Pollution trigger correctly identifies connections above 30%
@@ -967,10 +961,8 @@ class TestRecyclingWorkflow:
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] Unit tests pass: `uv run pytest tests/test_recycler.py::TestRecyclingWorkflow -v`
-- [ ] All previous tests still pass: `uv run pytest tests/test_recycler.py -v`
-- [ ] Type checking passes: `uv run ruff check src/lifecycle/recycler.py`
-- [ ] No linting errors: `uv run ruff format src/lifecycle/recycler.py`
+- [ ] Unit tests pass: `just test`
+- [ ] Formatting correct: `just check`
 
 #### Manual Verification:
 - [ ] Recycling workflow completes without errors in happy path
@@ -1215,10 +1207,8 @@ class TestLifecycle:
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] Unit tests pass: `uv run pytest tests/test_recycler.py::TestLifecycle -v`
-- [ ] All previous tests still pass: `uv run pytest tests/test_recycler.py -v`
-- [ ] Type checking passes: `uv run ruff check src/lifecycle/recycler.py`
-- [ ] No linting errors: `uv run ruff format src/lifecycle/recycler.py`
+- [ ] Unit tests pass: `just test`
+- [ ] Formatting correct: `just check`
 
 #### Manual Verification:
 - [ ] Monitoring loop starts and runs periodically
@@ -1364,10 +1354,8 @@ class TestManualOperations:
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] Unit tests pass: `uv run pytest tests/test_recycler.py::TestManualOperations -v`
-- [ ] All tests pass: `uv run pytest tests/test_recycler.py -v`
-- [ ] Type checking passes: `uv run ruff check src/lifecycle/recycler.py`
-- [ ] No linting errors: `uv run ruff format src/lifecycle/recycler.py`
+- [ ] Unit tests pass: `just test`
+- [ ] Formatting correct: `just check`
 
 #### Manual Verification:
 - [ ] force_recycle() successfully triggers recycling on demand
@@ -1813,12 +1801,8 @@ async def test_pool_starts_recycler():
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] Integration tests pass: `uv run pytest tests/test_recycler_integration.py -v`
-- [ ] All unit tests still pass: `uv run pytest tests/test_recycler.py -v`
-- [ ] Pool tests pass: `uv run pytest tests/test_pool.py -v`
-- [ ] All tests pass: `uv run pytest`
-- [ ] Type checking passes: `uv run ruff check src/`
-- [ ] Formatting correct: `uv run ruff format src/`
+- [ ] Unit tests pass: `just test`
+- [ ] Formatting correct: `just check`
 
 #### Manual Verification:
 - [ ] Pool starts and stops recycler correctly
