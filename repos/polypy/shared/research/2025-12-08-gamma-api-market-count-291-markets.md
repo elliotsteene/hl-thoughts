@@ -5,10 +5,11 @@ git_commit: c48fbcf40e68c2428afe42ad22dd8b40009c450a
 branch: phase-1-http-server-implementation
 repository: polypy
 topic: "Why only 291 active markets are fetched from Gamma API"
-tags: [research, codebase, gamma-api, lifecycle, market-discovery]
+tags: [research, codebase, gamma-api, lifecycle, market-discovery, bug]
 status: complete
 last_updated: 2025-12-08
 last_updated_by: Elliot Steene
+last_updated_note: "Added root cause analysis - pagination bug identified"
 ---
 
 # Research: Why Only 291 Active Markets Are Fetched from Gamma API
@@ -25,7 +26,18 @@ Why does the system fetch only 291 active markets from Polymarket's Gamma API wh
 
 ## Summary
 
-The system fetches exactly 291 active markets because that's the number of markets Polymarket's Gamma API returns when filtering by `active=true` AND `closed=false`. The client-side code properly implements pagination and will fetch all available markets matching these criteria. No additional client-side filters or limitations are being applied beyond the two query parameters sent to the API.
+**UPDATE**: Root cause identified - the system stops pagination prematurely due to a bug in the break condition logic.
+
+The pagination loop breaks when `len(markets) < page_size` (line 52-56 in `src/lifecycle/api.py`), but this check happens **after** filtering out invalid markets (line 74). If the API returns a full page (e.g., 500 markets) but some are filtered out due to missing required fields, the filtered list will be smaller than `page_size`, causing the loop to incorrectly assume it has reached the last page.
+
+**Example scenario:**
+1. API returns 500 markets (full page)
+2. 5 markets are filtered out due to missing required fields
+3. `markets` list now has 495 items
+4. `495 < 500` → loop breaks
+5. Remaining markets are never fetched
+
+This explains why only 291 markets are fetched when more are likely available from the API.
 
 The second log message "Skipping connection creation: 0 pending (threshold: 50)" is unrelated to the market count - it indicates that WebSocket connection creation requires at least 50 pending markets to justify creating a new connection.
 
@@ -42,59 +54,92 @@ The system fetches markets from Polymarket's Gamma API using the following endpo
 GET https://gamma-api.polymarket.com/markets
 ```
 
-**Query Parameters** (`api.py:34-39`):
+**Query Parameters** (`api.py:36-42`):
 ```python
 params = {
-    "limit": page_size,      # Default: 100
-    "offset": offset,        # Increments by page_size
-    "active": "true",        # Only active markets
-    "closed": "false",       # Exclude closed markets
+    "limit": page_size,        # Default: 500
+    "offset": offset,          # Increments by page_size
+    "closed": "false",         # Exclude closed markets
+    "order": "id",             # Order by ID
+    "ascending": "false",      # Descending order
 }
 ```
 
-**Hardcoded Filters**:
-- `active: "true"` - Markets currently active for trading
-- `closed: "false"` - Markets not yet resolved/closed
-
-These two filters are applied to every API request and cannot be disabled or configured.
+**Note**: The `active: "true"` filter was removed from the current implementation. Only `closed: "false"` is applied.
 
 ### Pagination Implementation
 
-**Function**: `fetch_active_markets()` (`api.py:21-54`)
+**Function**: `fetch_active_markets()` (`api.py:23-61`)
 
-The pagination logic properly handles offset-based pagination to fetch all available markets:
+The pagination logic uses offset-based pagination but contains a bug:
 
-1. Starts with `offset=0`
-2. Fetches pages of size 100 (configurable via `page_size` parameter)
-3. Continues until either:
-   - Empty response received
-   - Response contains fewer items than `page_size` (indicating last page)
-4. Increments offset by `page_size` for each iteration
-
-**Configuration** (`api.py:15-18`):
+**Configuration** (`api.py:17-20`):
 ```python
-DEFAULT_PAGE_SIZE = 100
+DEFAULT_PAGE_SIZE = 500
 MAX_RETRIES = 3
 RETRY_DELAY = 2.0
+MARKETS_URL = f"{GAMMA_API_BASE_URL}/markets"
 ```
 
-The pagination logic is correctly implemented and will fetch all pages until the API returns no more results. For 291 markets with page size 100, the system makes 3 API requests:
-- Request 1: offset=0, returns 100 markets
-- Request 2: offset=100, returns 100 markets
-- Request 3: offset=200, returns 91 markets (stops here as 91 < 100)
+**Pagination Flow** (`api.py:35-58`):
+```python
+while True:
+    params = {
+        "limit": page_size,
+        "offset": offset,
+        "closed": "false",
+        "order": "id",
+        "ascending": "false",
+    }
+
+    markets = await _fetch_page(session, params)  # Returns FILTERED list
+
+    if not markets:
+        logger.warning("No more markets")
+        break
+
+    all_markets.extend(markets)
+
+    if len(markets) < page_size:  # BUG: checks filtered count, not API response
+        logger.warning(
+            f"markets less than page_size: {len(markets)} and {len(all_markets)} and {page_size}"
+        )
+        break
+
+    offset += page_size
+```
+
+**The Bug** (`api.py:52-56`):
+
+The break condition `len(markets) < page_size` checks the **filtered** market count after `_is_valid_market()` has removed invalid markets (line 74):
+
+```python
+# In _fetch_page() at line 74:
+return [_parse_market(m) for m in data if _is_valid_market(m)]
+```
+
+**Problem**: If the API returns a full page (500 markets) but some are filtered out due to missing required fields, the filtered list will be smaller than `page_size`, causing premature termination.
+
+**Example:**
+- API returns 500 markets (full page at offset=0)
+- 5 markets fail validation (missing `conditionId`, `question`, etc.)
+- `_fetch_page()` returns 495 markets
+- `495 < 500` → loop breaks incorrectly
+- Markets at offset=500 and beyond are never fetched
 
 ### Market Validation and Parsing
 
-**Validation Function**: `_is_valid_market()` (`api.py:84-87`)
+**Validation Function**: `_is_valid_market()` (`api.py:89-92`)
 
 Before parsing, markets must have all five required fields present in the API response:
 ```python
 required = ["conditionId", "question", "outcomes", "clobTokenIds", "endDate"]
+return all(field in data for field in required)
 ```
 
-Markets missing any of these fields are silently filtered out. However, this validation only checks for field presence, not field values - empty strings, null values, or malformed data will pass validation.
+Markets missing any of these fields are **silently filtered out** at line 74 in `_fetch_page()`. This filtering is what causes the pagination bug - when markets are removed, the filtered count becomes smaller than the page size, triggering early loop termination.
 
-**Parsing Function**: `_parse_market()` (`api.py:90-140`)
+**Parsing Function**: `_parse_market()` (`api.py:95-144`)
 
 The parsing function handles malformed data gracefully with fallback values:
 - Invalid `endDate` → Sets `end_timestamp = 0` and logs warning
@@ -166,21 +211,22 @@ When there are 0 markets in PENDING status (meaning all discovered markets are e
 
 ### Market Count Analysis
 
-**291 Markets** is the actual number of markets returned by the Gamma API that meet both criteria:
-1. `active=true` - Market is currently active
-2. `closed=false` - Market has not been resolved
+**291 Markets** represents the number fetched before the pagination bug caused early termination.
 
-**No client-side limitations** are reducing this count:
-- Pagination correctly fetches all pages
-- Validation only checks for required fields (minimal filtering)
-- Parsing errors use fallback values instead of dropping markets
-- No hardcoded limits on market count
-- No additional filtering beyond the two API parameters
+**Root cause**: The pagination loop breaks prematurely when:
+1. API returns a full page (500 markets)
+2. Some markets are filtered out due to missing required fields
+3. Filtered count < page_size triggers incorrect "last page" detection
+4. Loop stops, leaving remaining markets unfetched
 
-**The number is determined entirely by Polymarket's backend**, which controls:
-- Which markets are marked as "active"
-- Which markets are marked as "closed"
-- When markets transition between states
+**Actual available markets**: Unknown - potentially much higher than 291. The true count depends on:
+- How many markets Polymarket has with `closed=false`
+- How many pages of results exist beyond the point where pagination stopped
+
+**The bug affects**:
+- Initial market discovery on startup
+- Periodic re-discovery (every 60 seconds)
+- Any call to `fetch_active_markets()`
 
 ### Token vs Market Count
 
@@ -195,10 +241,13 @@ The WebSocket connections subscribe to **token IDs**, not market IDs.
 
 ## Code References
 
-- `src/lifecycle/api.py:34-39` - API query parameters with hardcoded filters
-- `src/lifecycle/api.py:21-54` - Pagination implementation
-- `src/lifecycle/api.py:84-87` - Market validation logic
-- `src/lifecycle/api.py:90-140` - Market parsing with fallback values
+- `src/lifecycle/api.py:36-42` - API query parameters (only `closed=false` filter)
+- `src/lifecycle/api.py:23-61` - Pagination implementation with bug
+- `src/lifecycle/api.py:52-56` - **BUG**: Break condition checks filtered count
+- `src/lifecycle/api.py:74` - Validation filter applied before pagination check
+- `src/lifecycle/api.py:89-92` - Market validation logic (required fields)
+- `src/lifecycle/api.py:95-144` - Market parsing with fallback values
+- `src/lifecycle/api.py:17` - `DEFAULT_PAGE_SIZE = 500`
 - `src/lifecycle/controller.py:200-245` - Market discovery and registration
 - `src/connection/pool.py:171-179` - Connection creation threshold logic
 - `src/lifecycle/types.py:26-29` - Configuration constants
@@ -245,9 +294,30 @@ The system was designed to handle "whatever markets the API returns" through pag
 
 ## Open Questions
 
-None - the system is functioning as designed. The 291 market count reflects the actual state of Polymarket's active, non-closed markets at the time of the API call.
+**Resolved**: The 291 market count is due to a pagination bug, not API limitations.
 
-If more markets are expected, the investigation should focus on:
-1. Verifying the Gamma API directly (e.g., via curl or browser)
-2. Checking if the definitions of "active" and "closed" match expectations
-3. Determining if there are alternative API endpoints with different filtering options
+## Follow-up Research (2025-12-08 17:25 IST)
+
+### Bug Discovery
+
+User identified that the pagination break condition at `src/lifecycle/api.py:52-56` incorrectly checks the filtered market count instead of the raw API response count.
+
+**The Issue**:
+```python
+# Line 52-56
+if len(markets) < page_size:  # markets is AFTER filtering
+    logger.warning(
+        f"markets less than page_size: {len(markets)} and {len(all_markets)} and {page_size}"
+    )
+    break
+```
+
+But `markets` comes from `_fetch_page()` which filters at line 74:
+```python
+# Line 74
+return [_parse_market(m) for m in data if _is_valid_market(m)]
+```
+
+**Impact**: If any markets are filtered out due to missing required fields (`conditionId`, `question`, `outcomes`, `clobTokenIds`, `endDate`), the loop terminates early, leaving potentially hundreds of markets unfetched.
+
+**Fix needed**: The break condition should check the raw API response length before filtering, not the filtered result length. This would require `_fetch_page()` to return both the filtered markets and the original response count.
