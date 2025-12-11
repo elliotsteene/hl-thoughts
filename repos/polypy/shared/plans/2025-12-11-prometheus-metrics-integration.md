@@ -130,11 +130,341 @@ Use a **"transformation layer"** pattern:
 
 This plan is designed for implementation using stacked PRs, where each phase becomes one branch/PR in a stack:
 
-- **Phase Sequencing**: Each phase builds on the previous, showing the implementation journey
+- **Phase Sequencing**: 4 phases total, each builds on the previous, showing the implementation journey
+  - Phase 0: Docker infrastructure (Dockerfile, docker-compose.yml, Prometheus config)
+  - Phase 1: Core metrics module and `/metrics` endpoint
+  - Phase 2: Per-connection and per-worker labeled metrics
+  - Phase 3: Worker processing time summaries
 - **Independent Review**: Each PR is independently testable and deployable
 - **Pause Points**: Manual verification after each phase before proceeding
 - **Estimated Scope**: Each phase is roughly <300 lines for optimal reviewability
 - **Stack Management**: Use the `stacked-pr` skill after completing each phase
+
+---
+
+## Phase 0: Docker Infrastructure Setup
+
+### Overview
+Create Docker infrastructure to run the PolyPy application alongside Prometheus for local development and testing. This enables easy testing of the Prometheus integration without requiring separate installation of services.
+
+### PR Context
+**Stack Position**: First PR in the stack (base: main)
+**Purpose**: Establish containerized development environment for Prometheus integration testing
+**Enables**: Phase 1 will add the `/metrics` endpoint that Prometheus will scrape
+**Review Focus**: Dockerfile best practices, docker-compose service configuration, Prometheus scrape config
+
+### Changes Required
+
+#### 1. Create Dockerfile
+**File**: `Dockerfile`
+**Changes**: Add new file with multi-stage build for optimal image size
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+# Build stage
+FROM python:3.14-slim AS builder
+
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+# Set working directory
+WORKDIR /app
+
+# Copy dependency files
+COPY pyproject.toml uv.lock ./
+
+# Install dependencies to virtual environment
+RUN uv sync --frozen --no-dev
+
+# Runtime stage
+FROM python:3.14-slim
+
+# Set working directory
+WORKDIR /app
+
+# Copy virtual environment from builder
+COPY --from=builder /app/.venv /app/.venv
+
+# Copy application source
+COPY src ./src
+
+# Set PATH to use virtual environment
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Expose HTTP server port
+EXPOSE 8080
+
+# Run the application
+CMD ["python", "src/main.py"]
+```
+
+#### 2. Create Docker Compose Configuration
+**File**: `docker-compose.yml`
+**Changes**: Add new file with services for polypy and prometheus
+
+```yaml
+version: '3.8'
+
+services:
+  polypy:
+    build: .
+    container_name: polypy
+    ports:
+      - "8080:8080"
+    environment:
+      - LOG_LEVEL=INFO
+      - HTTP_PORT=8080
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - monitoring
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=1h'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - monitoring
+    depends_on:
+      polypy:
+        condition: service_healthy
+
+networks:
+  monitoring:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+```
+
+#### 3. Create Prometheus Configuration
+**File**: `prometheus.yml`
+**Changes**: Add new file with scrape configuration for polypy
+
+```yaml
+# Prometheus configuration for PolyPy monitoring
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'polypy-dev'
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # PolyPy application metrics
+  - job_name: 'polypy'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['polypy:8080']
+        labels:
+          service: 'polypy'
+          environment: 'development'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # PolyPy health check (optional, for monitoring)
+  - job_name: 'polypy-health'
+    metrics_path: '/health'
+    metric_relabel_configs:
+      # Drop this since /health returns JSON, not metrics
+      - action: drop
+        regex: '.*'
+    static_configs:
+      - targets: ['polypy:8080']
+```
+
+#### 4. Update .dockerignore
+**File**: `.dockerignore`
+**Changes**: Add new file to exclude unnecessary files from Docker build
+
+```
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Tests
+tests/
+pytest.ini
+.pytest_cache/
+
+# Documentation
+docs/
+lessons/
+*.md
+!README.md
+
+# Thoughts
+thoughts/
+
+# Development
+.pre-commit-config.yaml
+.ruff.toml
+justfile
+
+# Docker
+Dockerfile
+docker-compose.yml
+prometheus.yml
+.dockerignore
+```
+
+#### 5. Add Docker Commands to Justfile
+**File**: `justfile`
+**Changes**: Add docker-related commands after existing commands
+
+**Add at the end of the file**:
+```makefile
+# Docker commands
+docker-build:
+    docker build -t polypy:latest .
+
+docker-up:
+    docker-compose up -d
+
+docker-down:
+    docker-compose down
+
+docker-logs:
+    docker-compose logs -f
+
+docker-restart:
+    docker-compose restart
+
+docker-clean:
+    docker-compose down -v
+    docker rmi polypy:latest || true
+
+# Start full stack (polypy + prometheus)
+stack-up: docker-build docker-up
+    @echo "✓ Stack is up!"
+    @echo "  - PolyPy: http://localhost:8080"
+    @echo "  - PolyPy Stats: http://localhost:8080/stats"
+    @echo "  - PolyPy Health: http://localhost:8080/health"
+    @echo "  - Prometheus: http://localhost:9090"
+
+stack-down: docker-down
+    @echo "✓ Stack is down"
+```
+
+#### 6. Update README Documentation
+**File**: `README.md`
+**Changes**: Add Docker section to README
+
+**Add after the "Development Commands" section**:
+```markdown
+## Docker Development
+
+### Quick Start with Docker Compose
+
+Run the application with Prometheus monitoring:
+
+```bash
+# Build and start the stack
+just stack-up
+
+# View logs
+just docker-logs
+
+# Stop the stack
+just stack-down
+
+# Clean up everything (including volumes)
+just docker-clean
+```
+
+### Services
+
+- **PolyPy**: http://localhost:8080
+  - Stats endpoint: http://localhost:8080/stats
+  - Health endpoint: http://localhost:8080/health
+  - Metrics endpoint: http://localhost:8080/metrics (added in Phase 1)
+- **Prometheus**: http://localhost:9090
+  - Scrapes PolyPy metrics every 15 seconds
+  - 1 hour data retention
+
+### Docker Commands
+
+```bash
+# Build image only
+just docker-build
+
+# Start services
+just docker-up
+
+# Stop services
+just docker-down
+
+# View logs
+just docker-logs
+
+# Restart services
+just docker-restart
+```
+```
+
+### Success Criteria
+
+#### Automated Verification:
+- [ ] Dockerfile builds successfully: `docker build -t polypy:latest .`
+- [ ] Image size is reasonable (<500MB)
+- [ ] docker-compose validates: `docker-compose config`
+- [ ] Code passes linting: `just check`
+
+#### Manual Verification:
+- [ ] Start stack: `just stack-up`
+- [ ] Verify polypy container is running: `docker ps | grep polypy`
+- [ ] Verify prometheus container is running: `docker ps | grep prometheus`
+- [ ] Access PolyPy health endpoint: `curl http://localhost:8080/health`
+- [ ] Access PolyPy stats endpoint: `curl http://localhost:8080/stats`
+- [ ] Access Prometheus UI at http://localhost:9090
+- [ ] Verify Prometheus shows polypy target (Status → Targets)
+- [ ] Check polypy target is in "DOWN" state (expected - /metrics doesn't exist yet)
+- [ ] View container logs: `just docker-logs`
+- [ ] Stop stack cleanly: `just stack-down`
+- [ ] Clean up: `just docker-clean`
+
+**Implementation Note**: After completing this phase and all verification passes, pause here for manual confirmation that Docker infrastructure works correctly before proceeding to Phase 1. The polypy target in Prometheus will show as DOWN until Phase 1 adds the `/metrics` endpoint - this is expected.
 
 ---
 
@@ -144,8 +474,9 @@ This plan is designed for implementation using stacked PRs, where each phase bec
 Create the metrics collection infrastructure and add a basic `/metrics` endpoint that exposes high-level application metrics (running status, component counts). This establishes the foundation for more detailed metrics in later phases.
 
 ### PR Context
-**Stack Position**: First PR in the stack (base: main)
+**Stack Position**: Second PR in the stack (base: phase-0-branch)
 **Purpose**: Establish Prometheus integration foundation with basic metrics
+**Builds On**: Phase 0's Docker infrastructure for testing
 **Enables**: Phase 2 will add detailed per-component metrics with labels
 **Review Focus**: Metric naming conventions, prometheus_client usage patterns, test coverage
 
@@ -675,7 +1006,6 @@ async def test_metrics_endpoint_integration():
 - [ ] Code passes linting: `just check`
 - [ ] All tests pass: `uv run pytest tests/test_metrics_prometheus.py -v`
 - [ ] All existing tests still pass: `uv run pytest`
-- [ ] Type checking passes: `uv run pyrefly check`
 
 #### Manual Verification:
 - [ ] Start application with `just run`
@@ -698,7 +1028,7 @@ async def test_metrics_endpoint_integration():
 Add detailed per-connection and per-worker metrics with appropriate labels (connection_id, worker_id). This enables granular observability and troubleshooting of individual connections and workers.
 
 ### PR Context
-**Stack Position**: Second PR in the stack (base: phase-1-branch)
+**Stack Position**: Third PR in the stack (base: phase-1-branch)
 **Purpose**: Add granular per-component metrics with labels for detailed observability
 **Builds On**: Phase 1's MetricsCollector infrastructure
 **Enables**: Phase 3 will add worker processing time summaries
@@ -1131,7 +1461,6 @@ def test_worker_memory_bytes_conversion(mock_stats):
 - [ ] Code passes linting: `just check`
 - [ ] All tests pass: `uv run pytest tests/test_metrics_prometheus.py -v`
 - [ ] All existing tests still pass: `uv run pytest`
-- [ ] Type checking passes: `uv run pyrefly check`
 
 #### Manual Verification:
 - [ ] Start application with `just run`
@@ -1158,7 +1487,7 @@ def test_worker_memory_bytes_conversion(mock_stats):
 Add Summary metrics for worker processing times, router routing latency, and recycler downtime. Summaries track distributions and enable percentile queries in Prometheus.
 
 ### PR Context
-**Stack Position**: Third PR in the stack (base: phase-2-branch)
+**Stack Position**: Fourth PR in the stack (base: phase-2-branch)
 **Purpose**: Add latency distribution metrics using Summaries for percentile analysis
 **Builds On**: Phase 2's per-worker infrastructure
 **Enables**: Complete Prometheus integration with all metric types
@@ -1386,7 +1715,6 @@ in the stats collection layer, not just aggregate averages.
 - [ ] Code passes linting: `just check`
 - [ ] All tests pass: `uv run pytest tests/test_metrics_prometheus.py -v`
 - [ ] All existing tests still pass: `uv run pytest`
-- [ ] Type checking passes: `uv run pyrefly check`
 
 #### Manual Verification:
 - [ ] Start application with `just run`
