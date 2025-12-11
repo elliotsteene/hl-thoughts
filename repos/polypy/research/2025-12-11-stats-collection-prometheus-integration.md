@@ -534,11 +534,14 @@ No related research documents currently exist in the thoughts directory.
 ## Open Questions
 
 1. **Scrape Interval**: What should be the Prometheus scrape interval relative to worker STATS_INTERVAL?
-2. **Authentication**: Should `/metrics` endpoint require authentication?
-3. **Per-Market Metrics**: Should individual market metrics be exposed (high cardinality concern)?
+2. **Authentication**: Should `/metrics` endpoint require authentication? No authentication
+3. **Per-Market Metrics**: Should individual market metrics be exposed (high cardinality concern)? No individual market metrics
 4. **Histogram Buckets**: What latency/timing buckets are appropriate for processing time and routing latency?
+All should complete in <100ms, split into 10 - 20ms buckets.
 5. **Metric Retention**: How long should Prometheus retain metrics (affects storage)?
+Retain over a 1hr period
 6. **Alerting Rules**: What thresholds should trigger alerts (error rates, latencies, queue depths)?
+None for now. 
 7. **Dashboard Design**: What Grafana dashboards would be most useful for operators?
 
 ## Recommendations for Implementation
