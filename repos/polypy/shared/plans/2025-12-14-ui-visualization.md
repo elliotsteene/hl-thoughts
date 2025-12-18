@@ -130,14 +130,14 @@ async def _handle_markets(self, request: web.Request) -> web.Response:
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] Tests pass: `just test tests/test_lifecycle_controller.py`
-- [ ] Tests pass: `just test tests/server/test_http_server.py`
-- [ ] Lint passes: `just check`
+- [x] Tests pass: `just test tests/test_lifecycle_controller.py`
+- [x] Tests pass: `just test tests/server/test_http_server.py`
+- [x] Lint passes: `just check`
 
 #### Manual Verification:
-- [ ] Start application, wait for discovery
-- [ ] `curl http://localhost:8080/markets` returns market list with question text and outcomes
-- [ ] Market list only includes subscribed markets
+- [x] Start application, wait for discovery
+- [x] `curl http://localhost:8080/markets` returns market list with question text and outcomes
+- [x] Market list only includes subscribed markets
 
 **Implementation Note**: After completing this phase and all automated verification passes, pause here for manual confirmation.
 
@@ -476,15 +476,15 @@ def get_worker_for_asset(self, asset_id: str) -> int:
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] New protocol file exists: `src/worker/protocol.py`
-- [ ] Tests pass: `just test tests/test_worker.py`
-- [ ] Tests pass: `just test tests/server/test_http_server.py`
-- [ ] Lint passes: `just check`
+- [x] New protocol file exists: `src/worker/protocol.py`
+- [x] Tests pass: `just test tests/worker/`
+- [x] Tests pass: `just test tests/server/`
+- [x] Lint passes: `just check`
 
 #### Manual Verification:
-- [ ] Start application, wait for markets to be subscribed
-- [ ] `curl http://localhost:8080/orderbook/{asset_id}` returns orderbook with bids/asks/metrics
-- [ ] Response includes spread, mid_price, imbalance metrics
+- [x] Start application, wait for markets to be subscribed
+- [x] `curl http://localhost:8080/orderbook/{asset_id}` returns orderbook with bids/asks/metrics
+- [x] Response includes spread, mid_price, imbalance metrics
 
 **Implementation Note**: After completing this phase and all automated verification passes, pause here for manual confirmation.
 
@@ -609,13 +609,13 @@ response = OrderbookResponse(
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] Tests pass: `just test tests/test_orderbook.py`
-- [ ] Tests pass: `just test tests/test_worker.py`
-- [ ] Lint passes: `just check`
+- [x] Tests pass: `just test tests/test_orderbook.py`
+- [x] Tests pass: `just test tests/test_worker.py`
+- [x] Lint passes: `just check`
 
 #### Manual Verification:
-- [ ] Query orderbook endpoint, verify `history` array is populated
-- [ ] History contains timestamp, spread, mid_price data points
+- [x] Query orderbook endpoint, verify `history` array is populated
+- [x] History contains timestamp, spread, mid_price data points
 
 **Implementation Note**: After completing this phase and all automated verification passes, pause here for manual confirmation.
 
@@ -760,8 +760,8 @@ async def _stream_orderbook(
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] Tests pass: `just test tests/server/test_http_server.py`
-- [ ] Lint passes: `just check`
+- [x] Tests pass: `just test tests/server/test_http_server.py`
+- [x] Lint passes: `just check`
 
 #### Manual Verification:
 - [ ] Connect via websocat or browser: `websocat ws://localhost:8080/ws/orderbook`
@@ -791,6 +791,8 @@ cd ui
 npm install
 npm install @tanstack/react-query axios
 ```
+
+ - [x] Initialise frontend project
 
 #### 5.2 Project Structure
 
@@ -1380,9 +1382,9 @@ ui-build:
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] Frontend builds: `cd ui && npm run build`
-- [ ] TypeScript compiles: `cd ui && npm run typecheck`
-- [ ] No lint errors: `cd ui && npm run lint`
+- [x] Frontend builds: `cd ui && npm run build`
+- [x] TypeScript compiles: `cd ui && npm run typecheck`
+- [x] No lint errors: `cd ui && npm run lint`
 
 #### Manual Verification:
 - [ ] Start backend: `just run`
