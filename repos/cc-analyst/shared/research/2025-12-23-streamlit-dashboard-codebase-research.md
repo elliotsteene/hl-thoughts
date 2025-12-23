@@ -286,9 +286,9 @@ Choice of Polars over Pandas indicates:
 
 1. **API Rate Limits**: What are FRED API rate limits? Need caching strategy?
 2. **Data Storage**: Should fetched data be persisted locally (SQLite/CSV) or always fetch fresh?
-3. **Update Frequency**: How often should dashboard refresh data? (Daily, on-demand, cached?)
-4. **Indicator Categories**: Should we implement all 11 categories immediately or start with a subset?
-5. **Calculated Fields**: Should calculations happen at fetch time or display time?
-6. **Multi-Indicator Views**: Should dashboard support comparing multiple indicators on one chart?
-7. **Date Range Selection**: Should users control observation_start parameter via UI?
+3. **Update Frequency**: How often should dashboard refresh data? on-demand
+4. **Indicator Categories**: Start with growth
+5. **Calculated Fields**: Should calculations happen at fetch time
+6. **Multi-Indicator Views**: Should dashboard support comparing multiple indicators on one chart? Yes
+7. **Date Range Selection**: Should users control observation_start parameter via UI? Yes
 8. **Composite Scores**: Implement the 0-100 scoring system from the specification?
