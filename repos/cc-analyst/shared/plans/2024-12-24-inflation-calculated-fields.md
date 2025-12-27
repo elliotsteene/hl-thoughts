@@ -202,7 +202,7 @@ class CalculatedIndicator:
 
 #### Automated Verification:
 - [ ] Module imports correctly: `python -c "from src.indicators.calculations import CalculatedIndicator"`
-- [ ] Type checking passes: `mypy src/indicators/calculations/` (if mypy is configured)
+- [ ] Type checking passes: `just check` (if mypy is configured)
 
 #### Manual Verification:
 - [ ] N/A for this phase - infrastructure only
