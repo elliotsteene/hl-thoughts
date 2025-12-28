@@ -679,7 +679,7 @@ def render_indicator_chart(
         hovermode="x unified",
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 ```
 
 ### Success Criteria
@@ -909,9 +909,9 @@ if __name__ == "__main__":
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] Pyrefly check passes on all new files: `uv run pyrefly check src/`
-- [ ] Ruff check passes: `uv run ruff check src/`
-- [ ] App runs without errors: `uv run streamlit run src/app.py`
+- [x] Pyrefly check passes on all new files: `uv run pyrefly check src/`
+- [x] Ruff check passes: `uv run ruff check src/`
+- [X] App runs without errors: `uv run streamlit run src/app.py`
 
 #### Manual Verification:
 - [ ] Home page loads and displays category information
