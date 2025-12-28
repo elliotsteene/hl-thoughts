@@ -476,11 +476,11 @@ def get_indicator_enum(registry: IndicatorRegistry, indicator_name: str) -> StrE
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] Pyrefly check passes: `uv run pyrefly check src/services/`
-- [ ] Ruff check passes: `uv run ruff check src/services/`
+- [X] Pyrefly check passes: `uv run pyrefly check src/services/`
+- [X] Ruff check passes: `uv run ruff check src/services/`
 
 #### Manual Verification:
-- [ ] Services module can be imported without Streamlit running
+- [X] Services module can be imported without Streamlit running
 
 **Implementation Note**: After completing this phase and all automated verification passes, pause here for manual confirmation before proceeding to Phase 3.
 
@@ -685,11 +685,11 @@ def render_indicator_chart(
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] Pyrefly check passes: `uv run pyrefly check src/components/`
-- [ ] Ruff check passes: `uv run ruff check src/components/`
+- [x] Pyrefly check passes: `uv run pyrefly check src/components/`
+- [x] Ruff check passes: `uv run ruff check src/components/`
 
 #### Manual Verification:
-- [ ] Components are syntactically correct
+- [x] Components are syntactically correct
 
 **Implementation Note**: After completing this phase and all automated verification passes, pause here for manual confirmation before proceeding to Phase 4.
 
