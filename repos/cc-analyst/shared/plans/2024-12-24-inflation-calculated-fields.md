@@ -27,7 +27,7 @@ Implement an extensible system for calculated/derived indicators that can comput
 4. Architecture supports both single-source and multi-source calculations for future extensibility
 
 ### Verification:
-- Run dashboard with `streamlit run src/dashboard.py`
+- Run dashboard with `uv run streamlit run src/dashboard.py`
 - Select "Inflation" category
 - Verify "Core PCE 3m Annualized" and "CPI Momentum (3m vs 6m)" appear in dropdown
 - Select each and verify chart displays correctly with calculated values
@@ -201,11 +201,11 @@ class CalculatedIndicator:
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Module imports correctly: `python -c "from src.indicators.calculations import CalculatedIndicator"`
-- [ ] Type checking passes: `just check` (if mypy is configured)
+- [x] Module imports correctly: `python -c "from src.indicators.calculations import CalculatedIndicator"`
+- [x] Type checking passes: `just check` (if mypy is configured)
 
 #### Manual Verification:
-- [ ] N/A for this phase - infrastructure only
+- [x] N/A for this phase - infrastructure only
 
 ---
 
